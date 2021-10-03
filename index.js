@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const AWS = require("aws-sdk");
 
 const dynamo = new AWS.DynamoDB.DocumentClient();
+const table = process.env.VEKTOR_EXPENSE_TABLE;
 
 let speakOutput = ''
 
@@ -43,9 +44,7 @@ const CreateExpenseItentHanlder = {
         let endSession = false;
 
 
-        speakOutput = `Certo, diga qual o tipo e subtipo da despesa, por exempo, saúde  plano de saúde, 
-                        se esta despesa é essencial, se a despesa é recorrente, se for, me diga a periodicidade, exemplo, 
-                        mensal, semanal ou diária, a data de termino, caso tenha, e o valor da despesa com os centavos`;                   
+        speakOutput = "Certo, diga qual o tipo e subtipo da despesa, por exemplo, saúde,  plano de saúde."                  
         
         if(attributes.uuid == undefined){
             attributes.expense_uuid = uuidv4(),
@@ -67,6 +66,95 @@ const CreateExpenseItentHanlder = {
     }
 };
 
+const TypeAndSubtypeIntentHandler = {
+    
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'TypeAndSubtypeIntent';
+    },
+
+    handle(handlerInput) {
+
+        const attributes = handlerInput.attributesManager.getSessionAttributes();
+        attributes.type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_type');
+        attributes.subtype = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_subtype');
+
+        handlerInput.attributesManager.setSessionAttributes(attributes);
+
+        speakOutput = "Esta despesa é essencial?"
+    
+        return handlerInput.responseBuilder
+            .withShouldEndSession(false)  
+            .speak(speakOutput)
+            .getResponse();
+    }
+}
+
+const EssentialIntentHandler = {
+    
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'EssentialIntent';
+    },
+
+    handle(handlerInput) {
+
+        const attributes = handlerInput.attributesManager.getSessionAttributes();
+        attributes.essential_expense = Alexa.getSlotValue(handlerInput.requestEnvelope, 'essential_expense');
+
+        handlerInput.attributesManager.setSessionAttributes(attributes);
+
+        speakOutput = `Esta despesa é recorrente? Se sim, me diga a periodicidade. 
+        Por exemplo, mensal, semanal ou diária e a data de termino da recorrência caso tenha,`
+    
+        return handlerInput.responseBuilder
+            .withShouldEndSession(false)  
+            .speak(speakOutput)
+            .getResponse();
+    }
+}
+
+const RecurrenceIntentHandler = {
+    
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'RecurrenceIntent';
+    },
+
+    handle(handlerInput) {
+
+        const attributes = handlerInput.attributesManager.getSessionAttributes();
+        var is_recurrent = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrent');
+        var recurrence_type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_type');
+        var recurrence_due_day = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_due_day');
+        var recurrence_end_date = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_end_date');
+        var recurrent = true;
+
+        if(is_recurrent == 'Sim'){
+
+            var recurrence = {
+                type : recurrence_type,
+                due_day : recurrence_due_day,
+                end_date : recurrence_end_date
+            }
+        }else{
+            recurrent = false;
+        }
+
+        attributes.recurrent = recurrent;
+        attributes.recurrence = recurrence;
+
+        handlerInput.attributesManager.setSessionAttributes(attributes);
+
+        speakOutput = `Qual o valor da despesa?`
+    
+        return handlerInput.responseBuilder
+            .withShouldEndSession(false)  
+            .speak(speakOutput)
+            .getResponse();
+    }
+}
+
 const AddExpenseIntentHandler = {
     canHandle(handlerInput) {
         return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -75,26 +163,15 @@ const AddExpenseIntentHandler = {
 
     handle(handlerInput) {
 
-        const table = process.env.VEKTOR_EXPENSE_TABLE;
-
 
         const attributes = handlerInput.attributesManager.getSessionAttributes();
-        const type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_type');
-        const subtype = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_subtype');
-        const essential_expense = Alexa.getSlotValue(handlerInput.requestEnvelope, 'essential_expense');
-        const recurrent = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrent');
-        const recurrence_type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_type');
-        const recurrence_due_day = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_due_day');
-        const recurrence_end_date = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_end_date');
+        const type = attributes.expense_type;
+        const subtype = attributes.expense_subtype;
+        const essential_expense = attributes.essential_expense;
+        const recurrent = attributes.recurrent;
+        const recurrence = attributes.recurrence;
+        
         const value = Alexa.getSlotValue(handlerInput.requestEnvelope, 'value');
-
-        if(recurrent == 'Sim'){
-            var recurrence = {
-                type : recurrence_type,
-                due_day : recurrence_due_day,
-                end_date : recurrence_end_date
-            }
-        }
 
         const expenseEvent = {
             expense_uuid: attributes.expense_uuid,
@@ -205,6 +282,9 @@ exports.handler = Alexa.SkillBuilders.custom()
     .addRequestHandlers(
         LaunchRequestHandler,
         CreateExpenseItentHanlder,
+        TypeAndSubtypeIntentHandler,
+        EssentialIntentHandler,
+        RecurrenceIntentHandler,
         AddExpenseIntentHandler,
         HelpIntentHandler,
         CancelAndStopIntentHandler,
