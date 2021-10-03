@@ -74,62 +74,61 @@ const AddExpenseIntentHandler = {
     },
 
     handle(handlerInput) {
-        try{
 
-            const table = process.env.VEKTOR_EXPENSE_TABLE;
+        const table = process.env.VEKTOR_EXPENSE_TABLE;
 
 
-            const attributes = handlerInput.attributesManager.getSessionAttributes();
-            const type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_type');
-            const subtype = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_subtype');
-            const essential_expense = Alexa.getSlotValue(handlerInput.requestEnvelope, 'essential_expense');
-            const recurrent = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrent');
-            const recurrence_type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_type');
-            const recurrence_due_day = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_due_day');
-            const recurrence_end_date = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_end_date');
-            const value = Alexa.getSlotValue(handlerInput.requestEnvelope, 'value');
+        const attributes = handlerInput.attributesManager.getSessionAttributes();
+        const type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_type');
+        const subtype = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_subtype');
+        const essential_expense = Alexa.getSlotValue(handlerInput.requestEnvelope, 'essential_expense');
+        const recurrent = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrent');
+        const recurrence_type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_type');
+        const recurrence_due_day = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_due_day');
+        const recurrence_end_date = Alexa.getSlotValue(handlerInput.requestEnvelope, 'recurrence_end_date');
+        const value = Alexa.getSlotValue(handlerInput.requestEnvelope, 'value');
 
-            if(recurrent == 'Sim'){
-                var recurrence = {
-                    type : recurrence_type,
-                    due_day : recurrence_due_day,
-                    end_date : recurrence_end_date
-                }
+        if(recurrent == 'Sim'){
+            var recurrence = {
+                type : recurrence_type,
+                due_day : recurrence_due_day,
+                end_date : recurrence_end_date
             }
+        }
 
-            const expenseEvent = {
-                expense_uuid: attributes.expense_uuid,
-                event : attributes.event,
-                event_date: attributes.event_date,
-                event_payload : {
-                    type,
-                    subtype,
-                    essential_expense,
-                    recurrent,
-                    recurrence
-                },
-                value
-            };
-                      
-            console.log("Adding a new expense...");
+        const expenseEvent = {
+            expense_uuid: attributes.expense_uuid,
+            event : attributes.event,
+            event_date: attributes.event_date,
+            event_payload : {
+                type,
+                subtype,
+                essential_expense,
+                recurrent,
+                recurrence
+            },
+            value
+        };
 
-            await dynamo
-                .put({
-                    TableName: table,
-                    Item: expenseEvent,
-                })
-            .promise();
+        var params = {
+            TableName:table,
+                Item:expenseEvent
+        }
+                
+        console.log("Adding a new expense...");
 
-            console.log("Added item:", JSON.stringify(expenseEvent, null, 2));
-            speakOutput = 'Sua despesa foi inserida';
-
-     } catch{
-        console.error("Unable to add item. Error JSON:", JSON.stringify(expenseEvent, null, 2));
-        speakOutput = 'Estou com dificuldades para inserir essa despesa.';
-     }
-
+        dynamo.put(params, (err, data) => {
+            if (err) {
+                console.error("Unable to add expense. Error JSON:", JSON.stringify(err, null, 2));
+                speakOutput = 'Estou com dificuldades para criar sua despesa.';
+            }else{
+                console.log("Added item:", JSON.stringify(data, null, 2));
+                speakOutput = 'Sua despesa foi criada.';
+            }
+        });
+    
         return handlerInput.responseBuilder
-            .withShouldEndSession(false)  
+            .withShouldEndSession(true)  
             .speak(speakOutput)
             .getResponse();
     }
@@ -205,8 +204,8 @@ const ErrorHandler = {
 exports.handler = Alexa.SkillBuilders.custom()
     .addRequestHandlers(
         LaunchRequestHandler,
-        AddProductIntentHandler,
-        PurchaseIntentHanlder,
+        CreateExpenseItentHanlder,
+        AddExpenseIntentHandler,
         HelpIntentHandler,
         CancelAndStopIntentHandler,
         SessionEndedRequestHandler,
