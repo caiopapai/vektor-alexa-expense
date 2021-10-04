@@ -7,8 +7,7 @@ const table = process.env.VEKTOR_EXPENSE_TABLE;
 
 let speakOutput = ''
 
-const welcomeSpeak = 'Olá, eu sou o véktor gerenciador de despesas, sou responsável por gerenciar as suas despesas. ' +
-'Em que posso te ajudar?';     
+const welcomeSpeak = 'Olá, eu sou o véktor vou te ajudar com suas despesas. ' + 'Em que posso ajudar?';     
 
 const LaunchRequestHandler = {
     canHandle(handlerInput) {
@@ -53,7 +52,7 @@ const CreateExpenseItentHanlder = {
 
         }
 
-        attributes.interaction = "001";
+        attributes.interaction = 1;
 
         handlerInput.attributesManager.setSessionAttributes(attributes);
 
@@ -76,13 +75,14 @@ const TypeAndSubtypeIntentHandler = {
     handle(handlerInput) {
 
         const attributes = handlerInput.attributesManager.getSessionAttributes();
+
         attributes.type = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_type');
         attributes.subtype = Alexa.getSlotValue(handlerInput.requestEnvelope, 'expense_subtype');
 
         handlerInput.attributesManager.setSessionAttributes(attributes);
 
         speakOutput = "Esta despesa é essencial?"
-    
+
         return handlerInput.responseBuilder
             .withShouldEndSession(false)  
             .speak(speakOutput)
@@ -146,7 +146,8 @@ const RecurrenceIntentHandler = {
 
         handlerInput.attributesManager.setSessionAttributes(attributes);
 
-        speakOutput = `Qual o valor da despesa?`
+        speakOutput = `Diga o valor em reais e centavos da despesa, 
+        por exemplo, dez reais e vinte centavos.`
     
         return handlerInput.responseBuilder
             .withShouldEndSession(false)  
@@ -163,7 +164,6 @@ const AddExpenseIntentHandler = {
 
     handle(handlerInput) {
 
-
         const attributes = handlerInput.attributesManager.getSessionAttributes();
         const type = attributes.expense_type;
         const subtype = attributes.expense_subtype;
@@ -171,7 +171,21 @@ const AddExpenseIntentHandler = {
         const recurrent = attributes.recurrent;
         const recurrence = attributes.recurrence;
         
-        const value = Alexa.getSlotValue(handlerInput.requestEnvelope, 'value');
+        const vektor_value = Alexa.getSlotValue(handlerInput.requestEnvelope, 'value');
+        const vektor_value_decimal = Alexa.getSlotValue(handlerInput.requestEnvelope, 'value_decimal');
+
+        var value = '';
+        if (vektor_value == undefined) {
+            value = '00';
+        }else{
+            value = value;
+        }
+
+        if (vektor_value_decimal == undefined) {
+            value = value + '.00';
+        } else {
+            value = value + '.' + vektor_value_decimal;
+        }
 
         const expenseEvent = {
             expense_uuid: attributes.expense_uuid,
